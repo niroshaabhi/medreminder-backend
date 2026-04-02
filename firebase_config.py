@@ -1,26 +1,30 @@
-# backend/firebase_config.py
 import os
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\NIROSHA\Downloads\medreminder (1)\medreminder\backend\serviceAccountKey.json"
+import json
+import tempfile
 import firebase_admin
 from firebase_admin import credentials, firestore, messaging
-import os
 
 _db = None
 
 def init_firebase():
     global _db
 
-    # ✅ FIXED: check if already initialized before calling initialize_app
     if not firebase_admin._apps:
-        key_path = os.path.join(os.path.dirname(__file__), 'serviceAccountKey.json')
+        creds_json = os.getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON')
 
-        if os.path.exists(key_path):
-            cred = credentials.Certificate(key_path)
-            firebase_admin.initialize_app(cred)
+        if creds_json:
+            # Railway production
+            creds_dict = json.loads(creds_json)
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                json.dump(creds_dict, f)
+                temp_path = f.name
+            cred = credentials.Certificate(temp_path)
         else:
-            project_id = os.getenv('FIREBASE_PROJECT_ID', 'medreminder-demo')
-            firebase_admin.initialize_app(options={'projectId': project_id})
+            # Local Windows
+            key_path = os.path.join(os.path.dirname(__file__), 'serviceAccountKey.json')
+            cred = credentials.Certificate(key_path)
 
+        firebase_admin.initialize_app(cred)
         print("✅ Firebase connected")
 
     _db = firestore.client()
@@ -56,5 +60,4 @@ def send_fcm_to_topic(topic: str, title: str, body: str, data: dict = None):
     except Exception as e:
         return {'success': False, 'error': str(e)}
 
-# ✅ Initialize once on import
 init_firebase()
