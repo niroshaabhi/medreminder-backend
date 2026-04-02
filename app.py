@@ -8,7 +8,13 @@ import os
 import json
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173"])
+
+# ✅ Allow both localhost and Vercel
+CORS(app, origins=[
+    "http://localhost:5173",
+    "https://medreminder-frontend-jet.vercel.app"
+])
+
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key')
 
 # ✅ VAPID Keys for Push Notifications
@@ -66,6 +72,8 @@ def send_reminder():
             print("Push error:", ex)
     return jsonify({"status": "sent"})
 
+# ✅ Fixed for Railway deployment
 if __name__ == '__main__':
-    print("💊 MedRemind API starting on http://localhost:5000")
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    print(f"💊 MedRemind API starting on port {port}")
+    app.run(debug=False, host='0.0.0.0', port=port)
