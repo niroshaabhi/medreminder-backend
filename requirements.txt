@@ -7,3 +7,6 @@ py-vapid
 twilio
 requests
 groq
+scikit-learn
+numpy
+pandas
