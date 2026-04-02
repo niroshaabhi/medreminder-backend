@@ -11,16 +11,18 @@ def init_firebase():
 
     if not firebase_admin._apps:
         creds_json = os.getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON')
+        
+        # DEBUG - will show in Railway logs
+        print(f"DEBUG: creds_json found = {creds_json is not None}")
+        print(f"DEBUG: env keys = {[k for k in os.environ.keys() if 'GOOGLE' in k or 'FIREBASE' in k or 'CRED' in k]}")
 
         if creds_json:
-            # Railway production
             creds_dict = json.loads(creds_json)
             with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
                 json.dump(creds_dict, f)
                 temp_path = f.name
             cred = credentials.Certificate(temp_path)
         else:
-            # Local Windows
             key_path = os.path.join(os.path.dirname(__file__), 'serviceAccountKey.json')
             cred = credentials.Certificate(key_path)
 
