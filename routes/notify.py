@@ -18,7 +18,6 @@ def get_twilio_client():
 def send_whatsapp(to_phone, message):
     try:
         client = get_twilio_client()
-        # Clean phone number - remove spaces
         clean_phone = to_phone.replace(' ', '')
         client.messages.create(
             from_=TWILIO_WA,
@@ -33,7 +32,6 @@ def send_whatsapp(to_phone, message):
 def send_sms(to_phone, message):
     try:
         client = get_twilio_client()
-        # Clean phone number - remove spaces
         clean_phone = to_phone.replace(' ', '')
         client.messages.create(
             from_=TWILIO_FROM,
@@ -131,3 +129,67 @@ def notify_test():
             send_sms(phone, message)
 
     return jsonify({'success': True, 'notified': len(caregivers)})
+
+
+@notify_bp.route('/skip-alert', methods=['POST'])
+def skip_alert():
+    data         = request.get_json()
+    caregivers   = data.get('caregivers', [])
+    patient_name = data.get('patientName', 'Patient')
+    medicine     = data.get('medicineName', 'Medicine')
+    skipped_at   = data.get('skippedAt', '')
+
+    msg = (
+        f"🚨 *MedRemind Alert*\n\n"
+        f"⚠️ *{patient_name} skipped their medicine!*\n\n"
+        f"💊 Medicine: *{medicine}*\n"
+        f"🕐 Skipped at: {skipped_at}\n\n"
+        f"Please check on them. 🙏"
+    )
+
+    notified = 0
+    for cg in caregivers:
+        phone = cg.get('phone', '').replace(' ', '').replace('-', '')
+        if not phone:
+            continue
+        channels = cg.get('channel', [])
+        if 'WhatsApp' in channels:
+            send_whatsapp(phone, msg)
+            notified += 1
+        if 'SMS' in channels:
+            send_sms(phone, msg)
+            notified += 1
+
+    return jsonify({'success': True, 'notified': notified})
+
+
+# ✅ NEW — 30 min late reminder route
+@notify_bp.route('/late-reminder', methods=['POST'])
+def late_reminder():
+    data         = request.get_json()
+    caregivers   = data.get('caregivers', [])
+    patient_name = data.get('patientName', 'Patient')
+    medicine     = data.get('medicineName', 'Medicine')
+
+    msg = (
+        f"⏰ *MedRemind Follow-up*\n\n"
+        f"🔴 *{patient_name} still hasn't taken their medicine!*\n\n"
+        f"💊 Medicine: *{medicine}*\n"
+        f"⚠️ It's been 30 minutes since they snoozed.\n\n"
+        f"Please check on them urgently. 🙏"
+    )
+
+    notified = 0
+    for cg in caregivers:
+        phone = cg.get('phone', '').replace(' ', '').replace('-', '')
+        if not phone:
+            continue
+        channels = cg.get('channel', [])
+        if 'WhatsApp' in channels:
+            send_whatsapp(phone, msg)
+            notified += 1
+        if 'SMS' in channels:
+            send_sms(phone, msg)
+            notified += 1
+
+    return jsonify({'success': True, 'notified': notified})
