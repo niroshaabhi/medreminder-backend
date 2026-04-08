@@ -2,7 +2,8 @@
 from flask import Blueprint, request, jsonify
 from twilio.rest import Client
 import os
-
+from pywebpush import webpush, WebPushException
+import json
 notify_bp = Blueprint('notify', __name__)
 
 TWILIO_SID   = os.environ.get('TWILIO_ACCOUNT_SID')
@@ -193,3 +194,45 @@ def late_reminder():
             notified += 1
 
     return jsonify({'success': True, 'notified': notified})
+from pywebpush import webpush, WebPushException
+import json
+
+VAPID_PUBLIC_KEY  = os.environ.get('VAPID_PUBLIC_KEY')
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY')
+VAPID_EMAIL       = "mailto:niroshaabhi2211@gmail.com"
+
+# Store subscriptions in memory (simple approach)
+push_subscriptions = {}
+
+@notify_bp.route('/save-subscription', methods=['POST'])
+def save_subscription():
+    data         = request.get_json()
+    user_id      = data.get('userId')
+    subscription = data.get('subscription')
+    if user_id and subscription:
+        push_subscriptions[user_id] = subscription
+        print(f'✅ Push subscription saved for {user_id}')
+    return jsonify({'success': True})
+
+
+@notify_bp.route('/push', methods=['POST'])
+def send_push():
+    data    = request.get_json()
+    user_id = data.get('userId')
+    title   = data.get('title', 'MedRemind Alert')
+    body    = data.get('body', 'Time to take your medicine!')
+
+    subscription = push_subscriptions.get(user_id)
+    if not subscription:
+        return jsonify({'error': 'No subscription found'}), 404
+
+    try:
+        webpush(
+            subscription_info=subscription,
+            data=json.dumps({'title': title, 'body': body}),
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims={"sub": VAPID_EMAIL}
+        )
+        return jsonify({'success': True})
+    except WebPushException as e:
+        return jsonify({'error': str(e)}), 500
