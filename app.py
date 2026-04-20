@@ -21,7 +21,7 @@ firebase_admin.initialize_app(cred)
 
 # Flask app
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=["https://medreminder-frontend2-64ut.vercel.app"])
 
 # Register blueprints
 from routes.auth import auth_bp
@@ -43,6 +43,11 @@ app.register_blueprint(scan_bp, url_prefix="/scan")
 @app.route("/")
 def home():
     return {"status": "MedReminder Backend is running! ✅"}
+
+# ✅ Keep-alive ping route
+@app.route("/ping")
+def ping():
+    return {"status": "awake"}, 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
